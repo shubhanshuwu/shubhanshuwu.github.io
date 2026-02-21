@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shubhanshu Bishwash — GIS Data Engineer</title>
+<style>
+:root {
+  --bg: #03050f;
+  --surface: #070b18;
+  --blue: #1d5aff;
+  --blue-bright: #4c84ff;
+  --blue-glow: rgba(77,132,255,0.4);
+  --cyan: #00d4ff;
+  --text: #dce6f8;
+  --muted: #4a5a7a;
+  --border: rgba(77,132,255,0.12);
+  --border-bright: rgba(77,132,255,0.35);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* CURSOR */
+#cur {
+  position: fixed;
+  width: 6px; height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width .15s, height .15s, background .2s, transform .1s;
+  mix-blend-mode: difference;
+  will-change: left, top;
+}
+#cur.hov {
+  width: 20px; height: 20px;
+  background: var(--cyan);
+}
+
+/* CANVAS */
+#bg-canvas {
+  position: fixed; inset: 0;
+  z-index: 0; pointer-events: none;
+}
+
+/* NOISE */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  opacity: .35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 1;
+}
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 22px 64px;
+  background: rgba(3,5,15,0.65);
+  backdrop-filter: blur(24px) saturate(1.8);
+  border-bottom: 1px solid var(--border);
+  animation: navIn .7s ease .1s both;
+}
+@keyframes navIn { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:none; } }
+
+.nav-logo {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .22em; text-transform: uppercase;
+  color: var(--cyan);
+}
+.nav-logo .blink { animation: blink 1.1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.nav-links { display: flex; gap: 44px; }
+.nav-links a {
+  font-size: 11px; font-weight: 400;
+  letter-spacing: .15em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none;
+  transition: color .25s; position: relative; padding-bottom: 3px;
+}
+.nav-links a::after {
+  content: ''; position: absolute; bottom: 0; left: 50%;
+  width: 0; height: 1px; background: var(--cyan);
+  transition: width .3s, left .3s;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-links a:hover::after { width: 100%; left: 0; }
+.nav-links a.active { color: var(--cyan); }
+
+/* HERO */
+#hero {
+  position: relative; z-index: 2;
+  min-height: 100vh;
+  display: flex; align-items: center;
+  padding: 130px 64px 90px;
+  max-width: 1140px; margin: 0 auto;
+}
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-size: 10px; letter-spacing: .26em; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 28px;
+  opacity: 0; animation: fadeUp .7s ease .4s both;
+}
+.eyebrow-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan), 0 0 24px rgba(0,212,255,.4);
+  animation: dotPulse 2s ease infinite;
+}
+@keyframes dotPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.7);opacity:.5} }
+
+.hero-name {
+  font-size: clamp(30px, 4vw, 56px);
+  font-weight: 700; letter-spacing: -.03em; line-height: 1.06;
+  margin-bottom: 12px;
+  opacity: 0; animation: fadeUp .7s ease .55s both;
+}
+.hero-name .grad {
+  background: linear-gradient(110deg, #6ba3ff 0%, #00d4ff 50%, #a4f0ff 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradShift 5s ease infinite;
+}
+@keyframes gradShift { 0%,100%{background-position:0%} 50%{background-position:100%} }
+
+.hero-role {
+  font-size: clamp(12px, 1.4vw, 15px); font-weight: 300;
+  color: var(--muted); letter-spacing: .08em; margin-bottom: 32px;
+  opacity: 0; animation: fadeUp .7s ease .7s both;
+}
+
+.hero-bio {
+  font-size: 14px; line-height: 1.88; color: #5e6e90;
+  max-width: 580px; margin-bottom: 44px;
+  opacity: 0; animation: fadeUp .7s ease .85s both;
+}
+
+.hero-cta {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  opacity: 0; animation: fadeUp .7s ease 1s both;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 26px;
+  font-family: inherit; font-size: 11px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  text-decoration: none; border: none; cursor: none;
+  transition: all .3s; position: relative; overflow: hidden;
+}
+.btn span { position: relative; z-index: 1; }
+.btn-p { background: var(--blue); color: #fff; }
+.btn-p::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--blue-bright), var(--cyan));
+  opacity: 0; transition: opacity .3s;
+}
+.btn-p:hover::before { opacity: 1; }
+.btn-p::after {
+  content: ''; position: absolute;
+  top: 50%; left: -40px;
+  width: 18px; height: 130%;
+  background: rgba(255,255,255,.18);
+  transform: rotate(25deg) translateY(-50%);
+  transition: left .5s ease;
+}
+.btn-p:hover::after { left: 110%; }
+.btn-o {
+  background: transparent; color: var(--blue-bright);
+  border: 1px solid rgba(77,132,255,.28);
+}
+.btn-o:hover {
+  background: rgba(77,132,255,.08);
+  border-color: var(--blue-bright);
+  box-shadow: 0 0 22px rgba(77,132,255,.15);
+}
+
+/* STATS */
+.hero-stats {
+  display: flex; gap: 54px; margin-top: 58px;
+  padding-top: 42px; border-top: 1px solid var(--border);
+  opacity: 0; animation: fadeUp .7s ease 1.15s both;
+}
+.stat-n {
+  font-size: 34px; font-weight: 700; letter-spacing: -.02em;
+  background: linear-gradient(135deg, var(--blue-bright), var(--cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-l {
+  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted); margin-top: 5px;
+}
+
+/* SCROLL CUE */
+.scroll-cue {
+  position: absolute; bottom: 36px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  opacity: 0; animation: fadeUp .6s ease 1.5s both; z-index: 2;
+}
+.scroll-line {
+  width: 1px; height: 52px;
+  background: linear-gradient(to bottom, transparent, var(--blue-bright), transparent);
+  animation: scrollLine 2.2s ease-in-out infinite;
+}
+@keyframes scrollLine {
+  0% { clip-path: inset(100% 0 0 0); }
+  50% { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(0 0 100% 0); }
+}
+.scroll-txt { font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+
+/* LAYOUT */
+.wrap { position: relative; z-index: 2; max-width: 1140px; margin: 0 auto; padding: 0 64px; }
+.pad { padding: 110px 0; }
+
+/* SECTION HEADER */
+.sh { display: flex; align-items: baseline; gap: 20px; margin-bottom: 72px; }
+.sh-num { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--cyan); font-weight: 700; }
+.sh-title { font-size: clamp(22px, 2.8vw, 38px); font-weight: 700; letter-spacing: -.02em; }
+.sh-line { flex: 1; height: 1px; background: linear-gradient(to right, var(--border-bright), transparent); }
+
+/* TIMELINE */
+.timeline { position: relative; padding-left: 2px; }
+.timeline::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--border-bright) 10%, var(--border-bright) 90%, transparent);
+}
+
+.tl-item {
+  display: grid; grid-template-columns: 200px 1fr; gap: 48px;
+  padding: 52px 0 52px 40px; position: relative;
+  opacity: 0; transform: translateY(28px);
+  transition: opacity .65s ease, transform .65s ease;
+}
+.tl-item.vis { opacity: 1; transform: none; }
+.tl-item::before {
+  content: ''; position: absolute; left: -5px; top: 58px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--blue-bright);
+  box-shadow: 0 0 12px var(--blue-glow), 0 0 28px rgba(77,132,255,.18);
+  transition: box-shadow .3s;
+}
+.tl-item:hover::before { box-shadow: 0 0 22px var(--blue-glow), 0 0 50px rgba(77,132,255,.3); }
+
+.tl-period { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--blue-bright); margin-bottom: 8px; font-weight: 700; }
+.tl-location { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+.tl-co { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #2a3a5a; line-height: 1.5; }
+
+.tl-role { font-size: 20px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; margin-bottom: 18px; }
+.tl-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px;
+  background: rgba(77,132,255,.09); border: 1px solid rgba(77,132,255,.22);
+  font-size: 11px; color: var(--blue-bright); letter-spacing: .06em; margin-bottom: 22px;
+}
+.tl-badge::before { content: '★'; font-size: 10px; }
+
+.tl-list { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+.tl-list li {
+  font-size: 13.5px; line-height: 1.76; color: #556070;
+  padding-left: 20px; position: relative;
+}
+.tl-list li::before {
+  content: ''; position: absolute; left: 0; top: 10px;
+  width: 6px; height: 1px; background: var(--blue-bright);
+}
+.tl-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.tl-tag {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  padding: 4px 10px; border: 1px solid rgba(77,132,255,.14); color: var(--muted);
+  transition: all .2s;
+}
+.tl-tag:hover { border-color: var(--blue-bright); color: var(--blue-bright); }
+
+/* EDUCATION */
+.edu-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.edu-card {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 40px; position: relative; overflow: hidden;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity .6s, transform .6s, box-shadow .4s, border-color .4s;
+}
+.edu-card.vis { opacity: 1; transform: none; }
+.edu-card:hover { border-color: rgba(77,132,255,.28); box-shadow: 0 0 60px rgba(77,132,255,.07); transform: translateY(-6px) !important; }
+.edu-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 1px; background: linear-gradient(to right, transparent, var(--blue-bright), transparent);
+  transform: scaleX(0); transition: transform .5s ease;
+}
+.edu-card:hover::before { transform: scaleX(1); }
+.edu-corner {
+  position: absolute; top: 0; right: 0; width: 50px; height: 50px;
+  background: linear-gradient(225deg, rgba(77,132,255,.14), transparent);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+.edu-inst { font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--cyan); margin-bottom: 10px; }
+.edu-deg { font-size: 17px; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+.edu-yr { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
+.edu-gpa { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--cyan); border: 1px solid rgba(0,212,255,.2); padding: 4px 12px; }
+.edu-note { font-size: 12px; color: var(--muted); line-height: 1.65; margin-top: 16px; }
+
+.award {
+  display: inline-flex; align-items: center; gap: 14px; margin-top: 44px;
+  background: linear-gradient(135deg, rgba(255,195,50,.06), rgba(255,140,0,.02));
+  border: 1px solid rgba(255,195,50,.17); padding: 16px 24px;
+  opacity: 0; transform: translateY(16px);
+  transition: opacity .6s .2s, transform .6s .2s;
+}
+.award.vis { opacity: 1; transform: none; }
+.award-icon { font-size: 20px; }
+.award-txt { font-size: 13px; color: #c89830; letter-spacing: .04em; }
+
+/* SKILLS */
+.skills-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.sk-block {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 32px; position: relative; overflow: hidden;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity .6s, transform .6s, border-color .3s;
+}
+.sk-block.vis { opacity: 1; transform: none; }
+.sk-block:hover { border-color: rgba(77,132,255,.24); }
+.sk-block::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 1px; background: linear-gradient(to right, transparent, var(--blue-bright), transparent);
+  transform: scaleX(0); transition: transform .4s;
+}
+.sk-block:hover::after { transform: scaleX(1); }
+.sk-title {
+  font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--cyan); margin-bottom: 22px;
+  display: flex; align-items: center; gap: 12px;
+}
+.sk-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.sk-pills { display: flex; flex-wrap: wrap; gap: 9px; }
+.sk-pill {
+  font-size: 11px; padding: 6px 13px;
+  background: rgba(77,132,255,.06); border: 1px solid rgba(77,132,255,.16);
+  color: var(--blue-bright); letter-spacing: .04em;
+  transition: all .22s; position: relative; overflow: hidden;
+}
+.sk-pill::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(77,132,255,.2), rgba(0,212,255,.1));
+  opacity: 0; transition: opacity .22s;
+}
+.sk-pill:hover::before { opacity: 1; }
+.sk-pill:hover { border-color: var(--blue-bright); color: #fff; transform: translateY(-2px); }
+
+/* PROJECTS */
+.proj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.proj-card {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 38px; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; gap: 14px;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity .6s, transform .6s, border-color .4s, box-shadow .4s;
+}
+.proj-card.vis { opacity: 1; transform: none; }
+.proj-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(77,132,255,.05), transparent 60%);
+  opacity: 0; transition: opacity .4s;
+}
+.proj-card:hover::before { opacity: 1; }
+.proj-card:hover { border-color: rgba(77,132,255,.28); box-shadow: 0 24px 64px rgba(77,132,255,.07); transform: translateY(-6px) !important; }
+.proj-n { font-size: 10px; letter-spacing: .2em; color: var(--blue); font-weight: 700; }
+.proj-t { font-size: 17px; font-weight: 700; line-height: 1.3; }
+.proj-d { font-size: 13px; line-height: 1.76; color: var(--muted); }
+.proj-stack { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+
+/* CONTACT */
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; }
+.contact-intro { font-size: 15px; line-height: 1.86; color: #5e6e90; }
+.contact-links { display: flex; flex-direction: column; gap: 12px; }
+.cl {
+  display: flex; align-items: center; gap: 18px;
+  text-decoration: none; padding: 18px 22px;
+  border: 1px solid var(--border); background: var(--surface);
+  position: relative; overflow: hidden;
+  opacity: 0; transform: translateX(20px);
+  transition: opacity .6s, transform .6s, border-color .3s, background .3s;
+}
+.cl.vis { opacity: 1; transform: none; }
+.cl::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 2px; background: var(--blue-bright);
+  transform: scaleY(0); transition: transform .3s ease;
+}
+.cl:hover::before { transform: scaleY(1); }
+.cl:hover { border-color: rgba(77,132,255,.28); background: rgba(77,132,255,.05); transform: translateX(6px) !important; }
+.cl-icon { font-size: 15px; width: 18px; text-align: center; color: var(--blue-bright); }
+.cl-label { font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.cl-val { font-size: 13px; color: var(--text); }
+.cl-arrow { margin-left: auto; color: var(--blue-bright); opacity: 0; transition: opacity .3s, transform .3s; }
+.cl:hover .cl-arrow { opacity: 1; transform: translateX(4px); }
+
+/* DIVIDER */
+.div { height: 1px; background: linear-gradient(to right, transparent, var(--border-bright), transparent); position: relative; z-index: 2; }
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 2;
+  text-align: center; padding: 38px 64px;
+  border-top: 1px solid var(--border);
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+}
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 800px) {
+  nav { padding: 16px 24px; }
+  .nav-links { display: none; }
+  #hero, .wrap { padding-left: 24px; padding-right: 24px; }
+  .tl-item { grid-template-columns: 1fr; gap: 12px; }
+  .edu-row, .skills-grid, .proj-grid, .contact-grid { grid-template-columns: 1fr; }
+  .hero-stats { gap: 32px; flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<canvas id="bg-canvas"></canvas>
+
+<nav>
+  <div class="nav-logo">SB<span class="blink">_</span></div>
+  <div class="nav-links">
+    <a href="#experience">Experience</a>
+    <a href="#education">Education</a>
+    <a href="#skills">Skills</a>
+    <a href="#projects">Projects</a>
+    <a href="#contact">Contact</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div style="position:relative;z-index:2;">
+<div id="hero">
+  <div>
+    <div class="hero-eyebrow"><div class="eyebrow-dot"></div>GIS Data Engineer · IIT Indore · Mumbai</div>
+    <h1 class="hero-name" id="heroName">Shubhanshu <span class="grad">Bishwash</span></h1>
+    <p class="hero-role">Geospatial Intelligence · AI/ML · Remote Sensing · Earth Observation</p>
+    <p class="hero-bio">2 years building intelligent pipelines and AI models over massive satellite &amp; drone datasets. From oil &amp; gas exploration to government flood-risk systems — turning raw Earth observation into decisions that matter.</p>
+    <div class="hero-cta">
+      <a href="mailto:shubhanshub2007@gmail.com" class="btn btn-p"><span>Get in Touch</span></a>
+      <a href="https://github.com/shubhanshuwu" target="_blank" class="btn btn-o"><span>GitHub ↗</span></a>
+      <a href="https://linkedin.com/in/shubhanshub" target="_blank" class="btn btn-o"><span>LinkedIn ↗</span></a>
+    </div>
+    <div class="hero-stats">
+      <div><div class="stat-n"><span class="ctr" data-t="10">0</span>+ TB</div><div class="stat-l">Data Processed</div></div>
+      <div><div class="stat-n"><span class="ctr" data-t="97">0</span>%</div><div class="stat-l">Model Accuracy</div></div>
+      <div><div class="stat-n"><span class="ctr" data-t="400">0</span>+</div><div class="stat-l">Sites Monitored</div></div>
+      <div><div class="stat-n">$<span class="ctr" data-t="120">0</span>K</div><div class="stat-l">Cost Savings</div></div>
+    </div>
+  </div>
+</div>
+<div class="scroll-cue">
+  <div class="scroll-line"></div>
+  <div class="scroll-txt">Scroll</div>
+</div>
+</div>
+
+<div class="div"></div>
+
+<!-- EXPERIENCE -->
+<section id="experience" style="position:relative;z-index:2;">
+<div class="wrap pad">
+  <div class="sh"><div class="sh-num">01</div><h2 class="sh-title">Experience</h2><div class="sh-line"></div></div>
+  <div class="timeline">
+
+    <div class="tl-item">
+      <div>
+        <div class="tl-period">Mar 2025 — Present</div>
+        <div class="tl-location">Mumbai, IN</div>
+        <div class="tl-co">Encora Inc.<br>[Client: EOG Resources]</div>
+      </div>
+      <div>
+        <div class="tl-role">Software Engineer / Geospatial Data Engineer</div>
+        <div class="tl-badge">Presented in quarterly earnings report</div>
+        <ul class="tl-list">
+          <li>Built an in-house geo-exploration application with ~70% staff adoption; directly influenced asset acquisition and a major O&amp;G partnership decision.</li>
+          <li>Automated time-series pipelines across 400+ sites tracking vegetation reclamation via RVI, NDVI, soil moisture &amp; precipitation — 100% audit traceability via AWS S3 + PostgreSQL/PostGIS.</li>
+          <li>Developed Vision Transformer models for gas pipeline plume detection achieving &gt;92% accuracy on multi-temporal satellite imagery, drastically reducing manual inspection hours.</li>
+          <li>Engineered high-throughput pipelines for &gt;10 TB drone &amp; satellite datasets, cutting processing time 40% via parallelization and sensor-specific preprocessing.</li>
+        </ul>
+        <div class="tl-tags">
+          <span class="tl-tag">Vision Transformer</span><span class="tl-tag">AWS S3</span><span class="tl-tag">PostGIS</span><span class="tl-tag">NDVI/RVI</span><span class="tl-tag">Python</span><span class="tl-tag">Satellite Imagery</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div>
+        <div class="tl-period">Mar 2024 — Mar 2025</div>
+        <div class="tl-location">Mumbai, IN</div>
+        <div class="tl-co">Valectus Pvt. Ltd.</div>
+      </div>
+      <div>
+        <div class="tl-role">GIS Data Engineer</div>
+        <ul class="tl-list">
+          <li>Engineered automated GIS pipeline (GDAL, GeoPandas, PostGIS) eliminating 1,200+ manual hours/year and saving $120K for NYU Stern's Project Mumbai.</li>
+          <li>Developed Vision Transformers and CNN-UNet (97% accuracy) for LULC classification; applied GANs to enhance legacy satellite imagery (1997+) for remote road detection — 22% profit boost.</li>
+          <li>Designed cloud-native geospatial systems on GCP with Earth Engine, fusing DEM, SAR &amp; multi-temporal data with Monte Carlo simulations for real-time flood risk analysis.</li>
+          <li>Processed terabytes of NASA VIIRS, MODIS, Sentinel-2 data; quantified COVID-19 economic impact via nightlight drop (–37.2% in Delhi); built SAR-based urban expansion models across 1,000+ Sub-Saharan towns with 18% faster PostGIS queries.</li>
+        </ul>
+        <div class="tl-tags">
+          <span class="tl-tag">CNN-UNet</span><span class="tl-tag">GANs</span><span class="tl-tag">GCP/GEE</span><span class="tl-tag">Monte Carlo</span><span class="tl-tag">SAR</span><span class="tl-tag">GDAL</span><span class="tl-tag">MODIS/VIIRS</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div>
+        <div class="tl-period">Nov 2023 — Feb 2024</div>
+        <div class="tl-location">Bangalore, IN</div>
+        <div class="tl-co">Nineleaps Technologies</div>
+      </div>
+      <div>
+        <div class="tl-role">Data Engineer</div>
+        <ul class="tl-list">
+          <li>Designed ETL pipelines across 10+ data sources using SQL and Python, improving processing speed by 35%.</li>
+          <li>Built Tableau and Power BI dashboards driving data-driven decisions for a top-3 cab company across 50+ cities.</li>
+        </ul>
+        <div class="tl-tags">
+          <span class="tl-tag">SQL</span><span class="tl-tag">Python</span><span class="tl-tag">Tableau</span><span class="tl-tag">Power BI</span><span class="tl-tag">ETL</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div>
+        <div class="tl-period">Jun 2022 — Dec 2022</div>
+        <div class="tl-location">Indore, IN</div>
+        <div class="tl-co">IIT Indore</div>
+      </div>
+      <div>
+        <div class="tl-role">Teaching Assistant</div>
+        <ul class="tl-list">
+          <li>Led graduate-level lectures and lab sessions on Kalman Filters and Random Signals with MATLAB simulations.</li>
+        </ul>
+        <div class="tl-tags">
+          <span class="tl-tag">Kalman Filters</span><span class="tl-tag">MATLAB</span><span class="tl-tag">Signal Processing</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<div class="div"></div>
+
+<!-- EDUCATION -->
+<section id="education" style="position:relative;z-index:2;">
+<div class="wrap pad">
+  <div class="sh"><div class="sh-num">02</div><h2 class="sh-title">Education</h2><div class="sh-line"></div></div>
+  <div class="edu-row">
+    <div class="edu-card">
+      <div class="edu-corner"></div>
+      <div class="edu-inst">IIT Indore</div>
+      <div class="edu-deg">M.Tech — Astronomy, Astrophysics &amp; Space Engineering</div>
+      <div class="edu-yr">Graduated June 2023</div>
+      <div class="edu-gpa">GPA: 8.3 / 10</div>
+      <p class="edu-note">Thesis: Potential of Sentinel-1 &amp; Sentinel-2 for deforestation detection — Earth Observation Lab. Coursework: Remote Sensing, Sensors, Space Engineering, Astrostatistics, Spacecraft Dynamics, Navigation Systems.</p>
+    </div>
+    <div class="edu-card">
+      <div class="edu-corner"></div>
+      <div class="edu-inst">University of Mumbai</div>
+      <div class="edu-deg">B.E — Electronics Engineering</div>
+      <div class="edu-yr">Graduated June 2021</div>
+      <div class="edu-gpa">GPA: 7.2 / 10</div>
+      <p class="edu-note">Core engineering foundations in electronics, signals, and systems — the technical bedrock for advanced geospatial and data engineering work.</p>
+    </div>
+  </div>
+  <div class="award">
+    <span class="award-icon">🥇</span>
+    <span class="award-txt">Gold Medalist — International Informatics Olympiad</span>
+  </div>
+</div>
+</section>
+
+<div class="div"></div>
+
+<!-- SKILLS -->
+<section id="skills" style="position:relative;z-index:2;">
+<div class="wrap pad">
+  <div class="sh"><div class="sh-num">03</div><h2 class="sh-title">Technical Arsenal</h2><div class="sh-line"></div></div>
+  <div class="skills-grid">
+    <div class="sk-block">
+      <div class="sk-title">Programming</div>
+      <div class="sk-pills">
+        <span class="sk-pill">Python</span><span class="sk-pill">C / C++</span><span class="sk-pill">SQL</span><span class="sk-pill">PostgreSQL</span><span class="sk-pill">PostGIS</span><span class="sk-pill">MATLAB</span><span class="sk-pill">MySQL</span>
+      </div>
+    </div>
+    <div class="sk-block">
+      <div class="sk-title">AI &amp; Machine Learning</div>
+      <div class="sk-pills">
+        <span class="sk-pill">Vision Transformers</span><span class="sk-pill">U-Net CNN</span><span class="sk-pill">GANs (ERS-GAN)</span><span class="sk-pill">Predictive Modeling</span><span class="sk-pill">Monte Carlo</span><span class="sk-pill">LLaMA/LLMs</span><span class="sk-pill">scikit-learn</span><span class="sk-pill">SVM</span><span class="sk-pill">Random Forest</span>
+      </div>
+    </div>
+    <div class="sk-block">
+      <div class="sk-title">GIS &amp; Earth Observation</div>
+      <div class="sk-pills">
+        <span class="sk-pill">Google Earth Engine</span><span class="sk-pill">ArcGIS / QGIS</span><span class="sk-pill">SNAP</span><span class="sk-pill">GDAL</span><span class="sk-pill">Sentinel-1/2</span><span class="sk-pill">SAR</span><span class="sk-pill">MODIS/VIIRS</span><span class="sk-pill">GeoPandas</span><span class="sk-pill">PyQGIS</span>
+      </div>
+    </div>
+    <div class="sk-block">
+      <div class="sk-title">Infrastructure &amp; Tools</div>
+      <div class="sk-pills">
+        <span class="sk-pill">AWS S3</span><span class="sk-pill">GCP</span><span class="sk-pill">NumPy/Pandas</span><span class="sk-pill">Matplotlib</span><span class="sk-pill">Git / GitLab</span><span class="sk-pill">Tableau</span><span class="sk-pill">Power BI</span><span class="sk-pill">Seaborn</span>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<div class="div"></div>
+
+<!-- PROJECTS -->
+<section id="projects" style="position:relative;z-index:2;">
+<div class="wrap pad">
+  <div class="sh"><div class="sh-num">04</div><h2 class="sh-title">Research &amp; Builds</h2><div class="sh-line"></div></div>
+  <div class="proj-grid">
+    <div class="proj-card">
+      <div class="proj-n">01 · May 2023</div>
+      <div class="proj-t">Change Detection with Sentinel-1 SAR &amp; Sentinel-2 MSI</div>
+      <div class="proj-d">Change detection algorithms achieving 89% (S-1) and 84% (S-2) accuracy. PostgreSQL/PostGIS pipelines for spatial data management with species-level analysis and forest health metrics (Cohen's kappa).</div>
+      <div class="proj-stack"><span class="tl-tag">Python</span><span class="tl-tag">GDAL</span><span class="tl-tag">GEE</span><span class="tl-tag">PostGIS</span><span class="tl-tag">NumPy</span></div>
+    </div>
+    <div class="proj-card">
+      <div class="proj-n">02 · Nov 2023</div>
+      <div class="proj-t">Photogrammetric Species Identification via Sentinel Satellites</div>
+      <div class="proj-d">Pipeline classifying 17+ tree species in Indian forests using Sentinel-1 C-band and Sentinel-2 optical data. Random Forest and SVM for refined band-specific data fusion with GDAL/Python.</div>
+      <div class="proj-stack"><span class="tl-tag">scikit-learn</span><span class="tl-tag">SVM</span><span class="tl-tag">Random Forest</span><span class="tl-tag">GDAL</span><span class="tl-tag">Pandas</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<div class="div"></div>
+
+<!-- CONTACT -->
+<section id="contact" style="position:relative;z-index:2;">
+<div class="wrap pad">
+  <div class="sh"><div class="sh-num">05</div><h2 class="sh-title">Let's Connect</h2><div class="sh-line"></div></div>
+  <div class="contact-grid">
+    <div>
+      <p class="contact-intro">Open to challenging roles in geospatial data engineering, AI/ML for remote sensing, and earth observation systems. Always interested in projects where data meets the planet.</p>
+    </div>
+    <div class="contact-links">
+      <a href="mailto:shubhanshub2007@gmail.com" class="cl">
+        <span class="cl-icon">✉</span>
+        <div><div class="cl-label">Email</div><div class="cl-val">shubhanshub2007@gmail.com</div></div>
+        <span class="cl-arrow">→</span>
+      </a>
+      <a href="tel:+919834981942" class="cl">
+        <span class="cl-icon">☎</span>
+        <div><div class="cl-label">Phone</div><div class="cl-val">+91 98349 81942</div></div>
+        <span class="cl-arrow">→</span>
+      </a>
+      <a href="https://github.com/shubhanshuwu" target="_blank" class="cl">
+        <span class="cl-icon">⌥</span>
+        <div><div class="cl-label">GitHub</div><div class="cl-val">github.com/shubhanshuwu</div></div>
+        <span class="cl-arrow">→</span>
+      </a>
+      <a href="https://linkedin.com/in/shubhanshub" target="_blank" class="cl">
+        <span class="cl-icon">◈</span>
+        <div><div class="cl-label">LinkedIn</div><div class="cl-val">linkedin.com/in/shubhanshub</div></div>
+        <span class="cl-arrow">→</span>
+      </a>
+    </div>
+  </div>
+</div>
+</section>
+
+<footer>Shubhanshu Bishwash · GIS Data Engineer · 2025</footer>
+
+<script>
+// ─── CURSOR ───────────────────────────────────────────────────
+const cur = document.getElementById('cur');
+let mx = -100, my = -100;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cur.style.left = mx + 'px';
+  cur.style.top  = my + 'px';
+});
+document.querySelectorAll('a, button, .sk-pill, .tl-tag').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('hov'));
+  el.addEventListener('mouseleave', () => cur.classList.remove('hov'));
+});
+
+// ─── CANVAS STAR FIELD ────────────────────────────────────────
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+const resize = () => {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+};
+resize();
+window.addEventListener('resize', resize);
+
+let pmx = W / 2, pmy = H / 2;
+let isClicking = false;
+document.addEventListener('mousemove', e => { pmx = e.clientX; pmy = e.clientY; });
+
+// ── STARS (3 depth layers) ────────────────────────────────────
+class Star {
+  constructor(layer) {
+    this.layer = layer; // 0=far,1=mid,2=near
+    this.reset(true);
+  }
+  reset(init) {
+    this.x  = Math.random() * (W || 1400);
+    this.y  = init ? Math.random() * (H || 900) : Math.random() * (H || 900);
+    this.ox = this.x; this.oy = this.y;         // original pos for attraction spring
+    const sizes  = [.3, .7, 1.4];
+    const speeds = [.008, .018, .035];
+    const alphas = [.25, .5, .85];
+    this.r      = sizes[this.layer]  + Math.random() * sizes[this.layer];
+    this.drift  = speeds[this.layer] * (Math.random() * .6 + .7);
+    this.baseA  = alphas[this.layer] * (Math.random() * .4 + .6);
+    this.a      = this.baseA;
+    this.phase  = Math.random() * Math.PI * 2;
+    this.twinkleSpeed = Math.random() * .02 + .005;
+    // Subtle drift
+    this.driftAngle = Math.random() * Math.PI * 2;
+    this.driftR = Math.random() * 30 + 10;
+    // Attraction state
+    this.vx = 0; this.vy = 0;
+    this.attracted = false;
+    this.hue = Math.random() < .15 ? 185 : (Math.random() < .5 ? 220 : 210);
+  }
+  step(t) {
+    const CONNECT_R = [0, 130, 160][this.layer];
+    const dx = pmx - this.x, dy = pmy - this.y;
+    const d  = Math.sqrt(dx*dx + dy*dy);
+
+    if (isClicking && d < 300) {
+      // Repel on click
+      const f = (300 - d) / 300 * .8;
+      this.vx -= dx/d * f;
+      this.vy -= dy/d * f;
+    } else if (d < CONNECT_R && this.layer > 0) {
+      // Gentle attraction towards cursor
+      const f = (1 - d / CONNECT_R) * .04 * (this.layer + 1);
+      this.vx += dx/d * f;
+      this.vy += dy/d * f;
+    } else {
+      // Spring back to origin
+      const bx = this.ox + Math.sin(t * this.drift + this.phase) * this.driftR;
+      const by = this.oy + Math.cos(t * this.drift * .7 + this.phase) * this.driftR * .5;
+      this.vx += (bx - this.x) * .04;
+      this.vy += (by - this.y) * .04;
+    }
+    this.vx *= .88; this.vy *= .88;
+    this.x += this.vx; this.y += this.vy;
+
+    // Twinkle
+    this.a = this.baseA * (.7 + .3 * Math.sin(t * this.twinkleSpeed * 60 + this.phase));
+
+    // Boost brightness when near cursor
+    if (d < 180 && this.layer > 0) {
+      this.a = Math.min(1, this.a + (1 - d/180) * .4);
+    }
+  }
+  draw() {
+    const glow = this.layer === 2 ? this.r * 3.5 : this.r * 2;
+    // Glow halo
+    if (this.layer > 0) {
+      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glow);
+      g.addColorStop(0, `hsla(${this.hue},90%,80%,${(this.a * .35).toFixed(3)})`);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, glow, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Star core
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue},80%,90%,${this.a.toFixed(3)})`;
+    ctx.fill();
+
+    // Cross-spike for bright near stars
+    if (this.layer === 2 && this.a > .6) {
+      const spike = this.r * 5 * this.a;
+      ctx.save();
+      ctx.globalAlpha = this.a * .25;
+      ctx.strokeStyle = `hsla(${this.hue},90%,95%,1)`;
+      ctx.lineWidth = .5;
+      ctx.beginPath();
+      ctx.moveTo(this.x - spike, this.y); ctx.lineTo(this.x + spike, this.y);
+      ctx.moveTo(this.x, this.y - spike); ctx.lineTo(this.x, this.y + spike);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+// Layer 0: 200 far dim dots, Layer 1: 80 mid, Layer 2: 35 bright near
+const stars = [
+  ...Array.from({length: 200}, () => new Star(0)),
+  ...Array.from({length:  80}, () => new Star(1)),
+  ...Array.from({length:  35}, () => new Star(2)),
+];
+
+// ── CONSTELLATION LINES (near stars only) ─────────────────────
+function drawConstellations() {
+  const near = stars.filter(s => s.layer === 2);
+  const mid  = stars.filter(s => s.layer === 1);
+  const MAX_CONN = 120;
+  // Near-to-near
+  for (let i = 0; i < near.length; i++) {
+    for (let j = i + 1; j < near.length; j++) {
+      const dx = near[i].x - near[j].x, dy = near[i].y - near[j].y;
+      const d  = Math.sqrt(dx*dx + dy*dy);
+      if (d < MAX_CONN) {
+        const frac = 1 - d / MAX_CONN;
+        const a = frac * frac * .18;
+        ctx.beginPath();
+        ctx.moveTo(near[i].x, near[i].y);
+        ctx.lineTo(near[j].x, near[j].y);
+        ctx.strokeStyle = `rgba(140,195,255,${a.toFixed(3)})`;
+        ctx.lineWidth = frac * .8;
+        ctx.stroke();
+      }
+    }
+  }
+  // Mid-to-near cursor web when close
+  near.forEach(s => {
+    const dx = s.x - pmx, dy = s.y - pmy;
+    const d  = Math.sqrt(dx*dx + dy*dy);
+    if (d < 160) {
+      const a = (1 - d/160) * .35;
+      ctx.beginPath();
+      ctx.moveTo(pmx, pmy); ctx.lineTo(s.x, s.y);
+      ctx.strokeStyle = `rgba(0,212,255,${a.toFixed(3)})`;
+      ctx.lineWidth = (1 - d/160) * 1.2;
+      ctx.stroke();
+    }
+  });
+}
+
+// ── SHOOTING STARS ────────────────────────────────────────────
+class ShootingStar {
+  constructor() { this.reset(); }
+  reset() {
+    this.x    = Math.random() * W;
+    this.y    = Math.random() * H * .5;
+    this.len  = Math.random() * 160 + 80;
+    this.speed = Math.random() * 14 + 8;
+    this.angle = Math.PI / 4 + (Math.random() - .5) * .4;
+    this.life  = 0;
+    this.maxLife = this.len / this.speed * 2.5;
+    this.a    = Math.random() * .7 + .3;
+    this.active = false;
+    this.hue  = Math.random() < .4 ? 185 : 220;
+  }
+  spawn() {
+    this.reset();
+    this.active = true;
+  }
+  step() {
+    if (!this.active) return;
+    this.x += Math.cos(this.angle) * this.speed;
+    this.y += Math.sin(this.angle) * this.speed;
+    this.life++;
+    if (this.life > this.maxLife || this.x > W + 100 || this.y > H + 100) {
+      this.active = false;
+    }
+  }
+  draw() {
+    if (!this.active) return;
+    const p    = this.life / this.maxLife;
+    const fade = Math.sin(p * Math.PI);
+    const tx   = this.x - Math.cos(this.angle) * this.len;
+    const ty   = this.y - Math.sin(this.angle) * this.len;
+    const g    = ctx.createLinearGradient(tx, ty, this.x, this.y);
+    g.addColorStop(0, 'transparent');
+    g.addColorStop(.6, `hsla(${this.hue},90%,95%,${(fade * this.a * .6).toFixed(3)})`);
+    g.addColorStop(1,  `hsla(${this.hue},100%,100%,${(fade * this.a).toFixed(3)})`);
+    ctx.save();
+    ctx.shadowColor = `hsla(${this.hue},100%,90%,0.8)`;
+    ctx.shadowBlur  = 8;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty); ctx.lineTo(this.x, this.y);
+    ctx.strokeStyle = g;
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+    // Bright head
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue},100%,100%,${fade * this.a})`;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+const shooters = Array.from({length: 6}, () => new ShootingStar());
+let lastShot = 0;
+
+// ── CLICK BURST PARTICLES ─────────────────────────────────────
+const bursts = [];
+class Burst {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.particles = Array.from({length: 22}, () => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 5 + 2;
+      return {
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        r:  Math.random() * 2 + .5,
+        a:  1,
+        hue: Math.random() < .5 ? 185 : 220,
+      };
+    });
+    this.done = false;
+  }
+  step() {
+    let alive = false;
+    this.particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= .93; p.vy *= .93;
+      p.a  *= .93;
+      if (p.a > .01) alive = true;
+      // Glow halo
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+      g.addColorStop(0, `hsla(${p.hue},100%,90%,${(p.a * .4).toFixed(3)})`);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2); ctx.fill();
+      // Core
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue},90%,95%,${p.a.toFixed(3)})`;
+      ctx.fill();
+    });
+    this.done = !alive;
+  }
+}
+
+canvas.addEventListener('click', e => {
+  bursts.push(new Burst(e.clientX, e.clientY));
+  isClicking = true;
+  setTimeout(() => isClicking = false, 400);
+});
+
+// ── BACKGROUND ORBS ───────────────────────────────────────────
+const orbs = [
+  { x:.75, y:-.1, r:380, c:'rgba(29,90,255,0.06)',  ph:0   },
+  { x:-.05,y:.7,  r:280, c:'rgba(0,212,255,0.045)', ph:2.1 },
+  { x:.5,  y:.5,  r:220, c:'rgba(77,132,255,0.035)',ph:4.2 },
+];
+
+let t = 0;
+function tick() {
+  ctx.clearRect(0, 0, W, H);
+  t += .3;
+
+  // Orbs
+  orbs.forEach(o => {
+    const px = o.x * W + Math.sin(t*.003 + o.ph) * 50;
+    const py = o.y * H + Math.cos(t*.003 + o.ph) * 35;
+    const rg = ctx.createRadialGradient(px, py, 0, px, py, o.r);
+    rg.addColorStop(0, o.c); rg.addColorStop(1, 'transparent');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+  });
+
+  // Mouse glow
+  const mg = ctx.createRadialGradient(pmx, pmy, 0, pmx, pmy, 260);
+  mg.addColorStop(0, 'rgba(0,212,255,0.06)');
+  mg.addColorStop(.5,'rgba(77,132,255,0.03)');
+  mg.addColorStop(1, 'transparent');
+  ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
+
+  // Shooting stars — spawn one every 2.2–5s
+  if (t - lastShot > (Math.random() * 160 + 65)) {
+    const s = shooters.find(s => !s.active);
+    if (s) { s.spawn(); lastShot = t; }
+  }
+  shooters.forEach(s => { s.step(); s.draw(); });
+
+  // Stars
+  stars.forEach(s => { s.step(t); s.draw(); });
+
+  // Constellation lines
+  drawConstellations();
+
+  // Bursts
+  for (let i = bursts.length - 1; i >= 0; i--) {
+    bursts[i].step();
+    if (bursts[i].done) bursts.splice(i, 1);
+  }
+
+  requestAnimationFrame(tick);
+}
+tick();
+
+// ─── SCROLL REVEAL ─────────────────────────────────────────────
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const group = e.target.parentElement.querySelectorAll('.tl-item, .edu-card, .sk-block, .proj-card, .cl, .award');
+    let delay = 0;
+    group.forEach(el => {
+      if (!el.classList.contains('vis')) {
+        setTimeout(() => el.classList.add('vis'), delay);
+        delay += 90;
+      }
+    });
+    e.target.classList.add('vis');
+    io.unobserve(e.target);
+  });
+}, { threshold: 0.08 });
+document.querySelectorAll('.tl-item, .edu-card, .sk-block, .proj-card, .cl, .award').forEach(el => io.observe(el));
+
+// ─── COUNTER ───────────────────────────────────────────────────
+function runCtr(el) {
+  const tgt = +el.dataset.t, dur = 1900, s = performance.now();
+  const frame = now => {
+    const p = Math.min((now - s) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 4);
+    el.textContent = Math.floor(e * tgt);
+    if (p < 1) requestAnimationFrame(frame);
+    else el.textContent = tgt;
+  };
+  requestAnimationFrame(frame);
+}
+new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.querySelectorAll('.ctr').forEach(runCtr); }
+  });
+}, { threshold: 0.6 }).observe(document.querySelector('.hero-stats'));
+
+// ─── SCRAMBLE HERO NAME ────────────────────────────────────────
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890#@$%&';
+function scrambleTo(el, target, dur) {
+  const arr = target.split('');
+  const total = Math.ceil(dur / 16);
+  let f = 0;
+  const iv = setInterval(() => {
+    el.textContent = arr.map((c, i) => {
+      if (c === ' ') return ' ';
+      return f / total > i / arr.length ? c : CHARS[Math.floor(Math.random() * CHARS.length)];
+    }).join('');
+    if (++f >= total) { el.textContent = target; clearInterval(iv); }
+  }, 16);
+}
+setTimeout(() => {
+  const first = document.querySelector('#heroName');
+  if (!first) return;
+  const grad = first.querySelector('.grad');
+  const fn = first.childNodes[0];
+  scrambleTo({ set textContent(v) { fn.textContent = v + ' '; } }, 'Shubhanshu', 900);
+  setTimeout(() => scrambleTo(grad, 'Bishwash', 900), 300);
+}, 700);
+
+// ─── ACTIVE NAV ────────────────────────────────────────────────
+const secs = [...document.querySelectorAll('section[id]')];
+const nls  = [...document.querySelectorAll('.nav-links a')];
+window.addEventListener('scroll', () => {
+  let active = '';
+  secs.forEach(s => { if (window.scrollY >= s.offsetTop - 220) active = s.id; });
+  nls.forEach(a => {
+    const isActive = a.getAttribute('href') === '#' + active;
+    a.style.color = isActive ? 'var(--cyan)' : '';
+  });
+}, { passive: true });
+</script>
+</body>
+</html>
