@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shubhanshu Bishwash — GIS Data Engineer</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #03060e;
+    --bg2: #060b16;
+    --accent: #4090f0;
+    --accent2: #1a6de8;
+    --accent3: #80baff;
+    --text: #dde2ee;
+    --muted: #56607a;
+    --border: rgba(64,144,240,0.15);
+    --card: rgba(255,255,255,0.025);
+    --card-hover: rgba(64,144,240,0.07);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    line-height: 1.6;
+    cursor: none;
+  }
+
+  /* ── CURSOR: single clean dot ── */
+  #cur {
+    width: 5px; height: 5px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 50%;
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: width .15s, height .15s, background .15s;
+  }
+  body.hov #cur { width: 8px; height: 8px; background: var(--accent); }
+
+  /* ── CANVAS ── */
+  #bgc {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 22px 60px;
+    background: linear-gradient(180deg, rgba(3,6,14,.92) 0%, transparent 100%);
+    backdrop-filter: blur(6px);
+  }
+  .nav-logo { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .nav-links { display: flex; gap: 38px; list-style: none; }
+  .nav-links a {
+    font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none; transition: color .2s; position: relative;
+  }
+  .nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 1px; background: var(--accent); transition: width .3s; }
+  .nav-links a:hover { color: var(--accent); }
+  .nav-links a:hover::after { width: 100%; }
+
+  /* ── HERO ── */
+  #hero {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: 120px 60px 60px; gap: 56px;
+  }
+  .hero-left { position: relative; }
+  .hero-tag {
+    font-size: 11px; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 26px;
+    display: flex; align-items: center; gap: 12px;
+    opacity: 0; animation: fadeUp .8s .2s forwards;
+  }
+  .hero-tag::before { content: ''; width: 28px; height: 1px; background: var(--accent); }
+  .hero-name {
+    font-size: clamp(50px, 5.8vw, 86px);
+    font-weight: 700; line-height: .94; letter-spacing: -.03em;
+    margin-bottom: 22px; opacity: 0; animation: fadeUp .9s .35s forwards;
+  }
+  .hero-name .first { display: block; color: var(--text); }
+  .hero-name .last { display: block; color: transparent; -webkit-text-stroke: 1.5px var(--accent); letter-spacing: -.02em; }
+  .hero-subtitle {
+    font-size: 14px; color: var(--muted); max-width: 370px;
+    margin-bottom: 44px; line-height: 1.75;
+    opacity: 0; animation: fadeUp .9s .5s forwards;
+  }
+  .hero-cta { display: flex; gap: 14px; align-items: center; opacity: 0; animation: fadeUp .9s .65s forwards; }
+  .btn-primary {
+    padding: 13px 30px; background: var(--accent); color: var(--bg);
+    font-size: 11px; font-family: inherit; letter-spacing: .15em;
+    text-transform: uppercase; font-weight: 700; text-decoration: none;
+    border: none; cursor: none; transition: all .3s;
+    clip-path: polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));
+  }
+  .btn-primary:hover { background: #fff; transform: translateY(-2px); }
+  .btn-ghost {
+    padding: 12px 30px; border: 1px solid var(--border); color: var(--text);
+    font-size: 11px; font-family: inherit; letter-spacing: .15em;
+    text-transform: uppercase; text-decoration: none; transition: all .3s;
+    clip-path: polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: rgba(64,144,240,.05); }
+
+  /* ── HERO RIGHT ── */
+  .hero-right { opacity: 0; animation: fadeUp 1s .5s forwards; display: flex; flex-direction: column; gap: 11px; }
+  .hero-exp-label { font-size: 10px; letter-spacing: .28em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .exp-card-mini {
+    border: 1px solid var(--border); background: var(--card);
+    padding: 16px 20px; position: relative; overflow: hidden;
+    cursor: none; transition: all .3s;
+    clip-path: polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+  }
+  .exp-card-mini::before { content: ''; position: absolute; top: 0; left: 0; width: 2px; height: 0; background: var(--accent); transition: height .4s; }
+  .exp-card-mini:hover::before { height: 100%; }
+  .exp-card-mini:hover { background: var(--card-hover); border-color: rgba(64,144,240,.38); transform: translateX(4px); }
+  .exp-mini-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+  .exp-mini-company { font-size: 12.5px; font-weight: 600; color: var(--text); }
+  .exp-mini-date { font-size: 10px; color: var(--accent); letter-spacing: .07em; white-space: nowrap; }
+  .exp-mini-role { font-size: 11px; color: var(--muted); letter-spacing: .04em; margin-bottom: 7px; }
+  .exp-mini-desc { font-size: 11px; color: rgba(221,226,238,.48); line-height: 1.6; }
+
+  /* ── SECTIONS ── */
+  section { position: relative; z-index: 1; padding: 96px 60px; }
+  .section-header { display: flex; align-items: center; gap: 22px; margin-bottom: 56px; }
+  .section-num { font-size: 11px; color: var(--accent); letter-spacing: .2em; font-weight: 500; }
+  .section-title { font-size: clamp(30px, 3.8vw, 50px); font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+  .section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+
+  /* ── ABOUT ── */
+  #about { background: var(--bg2); }
+  .about-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 80px; align-items: start; }
+  .about-text p { font-size: 15px; color: var(--muted); line-height: 1.82; margin-bottom: 18px; }
+  .about-text strong { color: var(--text); font-weight: 600; }
+  .about-text .hl { color: var(--accent); }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); padding: 26px 22px; position: relative; overflow: hidden; transition: all .3s; }
+  .stat-box::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: var(--accent); transform: scaleX(0); transition: transform .4s; }
+  .stat-box:hover::after { transform: scaleX(1); }
+  .stat-box:hover { background: var(--card-hover); }
+  .stat-num { font-size: 38px; font-weight: 700; color: var(--accent); line-height: 1; letter-spacing: -.03em; }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-top: 7px; }
+
+  /* ── SKILLS ── */
+  .skills-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 2px; }
+  .skill-group { background: var(--card); border: 1px solid var(--border); padding: 30px 26px; transition: all .3s; }
+  .skill-group:hover { border-color: rgba(64,144,240,.32); background: var(--card-hover); }
+  .skill-group-title { font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; font-weight: 600; }
+  .skill-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+  .skill-tag { font-size: 11.5px; padding: 5px 11px; border: 1px solid rgba(255,255,255,.07); color: var(--text); background: rgba(255,255,255,.02); transition: all .2s; }
+  .skill-tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(64,144,240,.06); }
+
+  /* ── EXPERIENCE ── */
+  .exp-timeline { display: flex; flex-direction: column; gap: 4px; }
+  .exp-item {
+    border: 1px solid rgba(64,144,240,.28); background: var(--card); overflow: hidden;
+    clip-path: polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));
+    transition: border-color .3s;
+  }
+  .exp-item.open { border-color: rgba(64,144,240,.45); }
+  .exp-header { display: grid; grid-template-columns: 1fr auto; gap: 20px; padding: 30px 34px; cursor: none; align-items: center; transition: background .3s; }
+  .exp-header:hover { background: rgba(64,144,240,.04); }
+  .exp-company-name { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 5px; }
+  .exp-company-name span { color: var(--accent); }
+  .exp-role { font-size: 12px; color: var(--muted); letter-spacing: .05em; }
+  .exp-meta { text-align: right; }
+  .exp-date { font-size: 10px; color: var(--accent); letter-spacing: .12em; font-weight: 500; display: block; margin-bottom: 4px; }
+  .exp-location { font-size: 10px; color: var(--muted); letter-spacing: .07em; }
+  .exp-chevron { width: 22px; height: 22px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--accent); transition: transform .3s; flex-shrink: 0; align-self: center; }
+  .exp-item.open .exp-chevron { transform: rotate(180deg); }
+  .exp-body { max-height: 0; overflow: hidden; transition: max-height .6s cubic-bezier(.4,0,.2,1); }
+  .exp-body-inner { padding: 0 34px 34px; border-top: 1px solid var(--border); padding-top: 30px; }
+  .exp-highlight { background: rgba(64,144,240,.06); border-left: 2px solid var(--accent); padding: 14px 18px; margin-bottom: 28px; font-size: 12.5px; color: var(--text); line-height: 1.72; font-style: italic; }
+  .exp-projects { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .project-card { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); padding: 22px; transition: all .3s; position: relative; overflow: hidden; }
+  .project-card::after { content: ''; position: absolute; top: 0; left: 0; width: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent3)); transition: width .4s; }
+  .project-card:hover::after { width: 100%; }
+  .project-card:hover { border-color: rgba(64,144,240,.25); background: rgba(64,144,240,.04); transform: translateY(-3px); }
+  .project-icon { width: 34px; height: 34px; background: rgba(64,144,240,.1); border: 1px solid rgba(64,144,240,.2); display: flex; align-items: center; justify-content: center; font-size: 15px; margin-bottom: 14px; }
+  .project-name { font-size: 13px; font-weight: 600; margin-bottom: 7px; color: var(--text); line-height: 1.35; }
+  .project-desc { font-size: 11.5px; color: var(--muted); line-height: 1.72; }
+  .project-metric { display: inline-block; margin-top: 11px; font-size: 10.5px; color: var(--accent); letter-spacing: .05em; font-weight: 600; }
+
+  /* ── STANDALONE PROJECTS ── */
+  #projects { background: var(--bg2); }
+  .standalone-projects { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2px; }
+  .sp-card { background: var(--card); border: 1px solid var(--border); padding: 38px 34px; transition: all .3s; position: relative; overflow: hidden; cursor: none; }
+  .sp-card::before { content: ''; position: absolute; top: 0; right: 0; width: 80px; height: 80px; background: radial-gradient(circle, rgba(64,144,240,.09), transparent 70%); opacity: 0; transition: opacity .4s; }
+  .sp-card:hover::before { opacity: 1; }
+  .sp-card:hover { border-color: rgba(64,144,240,.38); background: var(--card-hover); transform: translateY(-4px); }
+  .sp-num { font-size: 46px; font-weight: 700; color: rgba(64,144,240,.1); line-height: 1; margin-bottom: 18px; letter-spacing: -.04em; }
+  .sp-title { font-size: 17px; font-weight: 600; margin-bottom: 10px; line-height: 1.3; }
+  .sp-tech { font-size: 10.5px; color: var(--accent); letter-spacing: .07em; margin-bottom: 14px; font-weight: 500; }
+  .sp-desc { font-size: 12.5px; color: var(--muted); line-height: 1.75; }
+  .sp-date { font-size: 10px; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+  /* ── EDUCATION ── */
+  .edu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .edu-card { background: var(--card); border: 1px solid var(--border); padding: 38px 34px; position: relative; overflow: hidden; transition: all .3s; clip-path: polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px)); }
+  .edu-card:hover { border-color: rgba(64,144,240,.38); background: var(--card-hover); }
+  .edu-badge { display: inline-block; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(64,144,240,.28); padding: 4px 11px; margin-bottom: 18px; }
+  .edu-institution { font-size: 21px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 7px; }
+  .edu-degree { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; line-height: 1.5; }
+  .edu-gpa { font-size: 26px; font-weight: 700; color: var(--accent); letter-spacing: -.02em; }
+  .edu-gpa span { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .edu-year { position: absolute; top: 38px; right: 34px; font-size: 10px; color: var(--muted); letter-spacing: .1em; }
+  .edu-coursework { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .edu-coursework-title { font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .edu-courses { display: flex; flex-wrap: wrap; gap: 5px; }
+  .edu-course { font-size: 11px; padding: 4px 10px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); color: var(--muted); transition: all .2s; }
+  .edu-course:hover { color: var(--accent); border-color: rgba(64,144,240,.28); }
+
+  /* ── CONTACT ── */
+  #contact { text-align: center; padding: 110px 60px; }
+  .contact-tag { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: var(--accent); margin-bottom: 22px; display: flex; justify-content: center; align-items: center; gap: 14px; }
+  .contact-tag::before, .contact-tag::after { content: ''; width: 36px; height: 1px; background: var(--accent); }
+  .contact-title { font-size: clamp(38px, 5.5vw, 74px); font-weight: 700; letter-spacing: -.03em; margin-bottom: 18px; line-height: .92; }
+  .contact-title span { color: transparent; -webkit-text-stroke: 1.5px var(--accent); }
+  .contact-sub { font-size: 14px; color: var(--muted); margin-bottom: 48px; }
+  .contact-links { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .contact-link { display: flex; align-items: center; gap: 9px; padding: 14px 26px; border: 1px solid var(--border); color: var(--text); text-decoration: none; font-size: 12px; letter-spacing: .07em; transition: all .3s; clip-path: polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px)); }
+  .contact-link:hover { border-color: var(--accent); color: var(--accent); background: rgba(64,144,240,.06); transform: translateY(-3px); }
+  .contact-link .icon { font-size: 15px; }
+
+  /* ── FOOTER ── */
+  footer { position: relative; z-index: 1; padding: 22px 60px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  footer p { font-size: 10.5px; color: var(--muted); letter-spacing: .09em; }
+
+  .glitch-line { width: 100%; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), var(--accent3), transparent); opacity: .2; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { opacity: 0; transform: translateY(38px); transition: opacity .8s, transform .8s; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--accent2); border-radius: 2px; }
+
+  @media (max-width: 900px) {
+    nav { padding: 18px 22px; }
+    #hero { grid-template-columns: 1fr; padding: 100px 22px 52px; }
+    section { padding: 72px 22px; }
+    .about-grid, .edu-grid { grid-template-columns: 1fr; }
+    .exp-header { grid-template-columns: 1fr; }
+    .exp-meta { text-align: left; }
+    footer { padding: 18px 22px; flex-direction: column; gap: 6px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<canvas id="bgc"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">SB</div>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#education">Education</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-left">
+    <div class="hero-tag">GIS Data Engineer · Remote Sensing · AI</div>
+    <h1 class="hero-name">
+      <span class="first">Shubhanshu</span>
+      <span class="last">Bishwash</span>
+    </h1>
+    <p class="hero-subtitle">
+      Building AI-powered geospatial systems. Processing the planet's data — from satellite imagery to terabyte pipelines. IIT Indore MTech graduate engineering spatial intelligence for oil & gas, governments, and NGO clients worldwide.
+    </p>
+    <div class="hero-cta">
+      <a href="#experience" class="btn-primary">View Work</a>
+      <a href="mailto:shubhanshub2007@gmail.com" class="btn-ghost">Get in Touch</a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="hero-exp-label">Experience</div>
+
+    <div class="exp-card-mini">
+      <div class="exp-mini-top">
+        <div class="exp-mini-company">Encora Inc. <span style="color:var(--muted);font-weight:400;font-size:10px;">/ EOG Resources</span></div>
+        <div class="exp-mini-date">Mar 2025 – Present</div>
+      </div>
+      <div class="exp-mini-role">Software Engineer / Geospatial Data Engineer</div>
+      <div class="exp-mini-desc">Built a geo-exploration platform adopted by ~70% of the client's entire staff and featured at quarterly earnings. Developed Vision Transformer models (&gt;92% accuracy) for pipeline plume detection and engineered 10+ TB satellite data pipelines, cutting processing time by 40%.</div>
+    </div>
+
+    <div class="exp-card-mini">
+      <div class="exp-mini-top">
+        <div class="exp-mini-company">Valectus Pvt. Ltd.</div>
+        <div class="exp-mini-date">Mar 2024 – Mar 2025</div>
+      </div>
+      <div class="exp-mini-role">GIS Data Engineer</div>
+      <div class="exp-mini-desc">Automated GIS pipelines saving $120K/year for NYU Stern's Project Mumbai. Built CNN-UNet (97% accuracy) for LULC classification, applied GANs to enhance legacy satellite imagery for road detection, and designed real-time GCP flood risk systems with Monte Carlo simulations.</div>
+    </div>
+
+    <div class="exp-card-mini">
+      <div class="exp-mini-top">
+        <div class="exp-mini-company">Nineleaps Technologies</div>
+        <div class="exp-mini-date">Nov 2023 – Feb 2024</div>
+      </div>
+      <div class="exp-mini-role">Data Engineer</div>
+      <div class="exp-mini-desc">Designed ETL pipelines across 10+ data sources for a top-3 Indian cab company operating in 50+ cities, improving big data processing speed by 35%. Built Tableau and Power BI dashboards that drove data-driven operational decisions at scale.</div>
+    </div>
+
+    <div class="exp-card-mini">
+      <div class="exp-mini-top">
+        <div class="exp-mini-company">IIT Indore</div>
+        <div class="exp-mini-date">Jun 2022 – Dec 2022</div>
+      </div>
+      <div class="exp-mini-role">Teaching Assistant</div>
+      <div class="exp-mini-desc">Led graduate-level lectures and lab sessions on Kalman Filters and Random Signals for the Space Engineering program. Developed course material and guided students through MATLAB simulations in signal processing and navigation systems.</div>
+    </div>
+  </div>
+</section>
+
+<div class="glitch-line"></div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="section-header reveal">
+    <span class="section-num">01</span>
+    <h2 class="section-title">About</h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="about-grid">
+    <div class="about-text reveal">
+      <p>I'm a <strong>GIS Data Engineer</strong> who bridges raw satellite imagery and actionable intelligence. With a foundation in <span class="hl">Astronomy, Astrophysics and Space Engineering</span> from IIT Indore, I bring a rigorous scientific approach to every geospatial challenge.</p>
+      <p>My work spans <strong>Vision Transformer models</strong> for gas pipeline plume detection, multi-terabyte satellite data pipelines, and cloud-native flood risk systems — all deployed for real clients from Fortune-500 oil & gas firms to city governments.</p>
+      <p>I specialize in turning massive, complex datasets — <strong>NASA VIIRS, MODIS, Sentinel-1 SAR, Sentinel-2 MSI, Maxar high-res</strong> — into systems that scale and results that matter. Whether it's 97% accurate CNN-UNet classification or a pipeline saving $120K/year, outcomes drive me.</p>
+      <p>Gold Medalist at the <span class="hl">International Informatics Olympiad</span>. Presenter at quarterly earnings reports. Currently building tools at Encora/EOG Resources used by ~70% of the entire client workforce.</p>
+    </div>
+    <div class="stats-grid reveal">
+      <div class="stat-box"><div class="stat-num">10+</div><div class="stat-label">TB of data processed</div></div>
+      <div class="stat-box"><div class="stat-num">97%</div><div class="stat-label">Model accuracy (CNN-UNet)</div></div>
+      <div class="stat-box"><div class="stat-num">$120K</div><div class="stat-label">Annual savings engineered</div></div>
+      <div class="stat-box"><div class="stat-num">1200+</div><div class="stat-label">Manual hours automated/yr</div></div>
+      <div class="stat-box"><div class="stat-num">400+</div><div class="stat-label">Sites tracked via pipelines</div></div>
+      <div class="stat-box"><div class="stat-num">92%+</div><div class="stat-label">Plume detection accuracy</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="glitch-line"></div>
+
+<!-- SKILLS -->
+<section id="skills">
+  <div class="section-header reveal">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Skills</h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="skills-container reveal">
+    <div class="skill-group">
+      <div class="skill-group-title">Programming</div>
+      <div class="skill-tags">
+        <span class="skill-tag">Python</span><span class="skill-tag">C/C++</span>
+        <span class="skill-tag">SQL</span><span class="skill-tag">PostgreSQL</span>
+        <span class="skill-tag">PostGIS</span><span class="skill-tag">MySQL</span>
+        <span class="skill-tag">MATLAB</span>
+      </div>
+    </div>
+    <div class="skill-group">
+      <div class="skill-group-title">AI & Machine Learning</div>
+      <div class="skill-tags">
+        <span class="skill-tag">Vision Transformers</span><span class="skill-tag">U-Net CNN</span>
+        <span class="skill-tag">GANs (ERS-GAN)</span><span class="skill-tag">Predictive Modeling</span>
+        <span class="skill-tag">Monte Carlo Simulations</span><span class="skill-tag">LLaMA</span>
+        <span class="skill-tag">Local LLMs</span><span class="skill-tag">scikit-learn</span>
+        <span class="skill-tag">SVM</span><span class="skill-tag">Random Forest</span>
+      </div>
+    </div>
+    <div class="skill-group">
+      <div class="skill-group-title">GIS & Earth Observation</div>
+      <div class="skill-tags">
+        <span class="skill-tag">ArcGIS</span><span class="skill-tag">QGIS</span>
+        <span class="skill-tag">Google Earth Engine</span><span class="skill-tag">GDAL</span>
+        <span class="skill-tag">SNAP</span><span class="skill-tag">GeoPandas</span>
+        <span class="skill-tag">PyQGIS</span><span class="skill-tag">ESRI Products</span>
+        <span class="skill-tag">SAR Processing</span><span class="skill-tag">DEM Analysis</span>
+      </div>
+    </div>
+    <div class="skill-group">
+      <div class="skill-group-title">Data & Cloud</div>
+      <div class="skill-tags">
+        <span class="skill-tag">AWS S3</span><span class="skill-tag">GCP</span>
+        <span class="skill-tag">pandas</span><span class="skill-tag">NumPy</span>
+        <span class="skill-tag">Matplotlib</span><span class="skill-tag">Seaborn</span>
+        <span class="skill-tag">Tableau</span><span class="skill-tag">Power BI</span>
+        <span class="skill-tag">Git/GitLab</span><span class="skill-tag">ETL Pipelines</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glitch-line"></div>
+
+<!-- EXPERIENCE — all open by default -->
+<section id="experience">
+  <div class="section-header reveal">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Experience</h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="exp-timeline">
+
+    <!-- Encora -->
+    <div class="exp-item open reveal" onclick="toggleExp(this)">
+      <div class="exp-header">
+        <div>
+          <div class="exp-company-name">Encora Inc. <span>/ EOG Resources</span></div>
+          <div class="exp-role">Software Engineer / Geospatial Data Engineer</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px">
+          <div class="exp-meta">
+            <span class="exp-date">March 2025 – Present</span>
+            <span class="exp-location">Mumbai, IN</span>
+          </div>
+          <div class="exp-chevron">▼</div>
+        </div>
+      </div>
+      <div class="exp-body" style="max-height:4000px">
+        <div class="exp-body-inner">
+          <div class="exp-highlight">
+            Built an in-house geo-exploration application with ~70% staff footfall across the entire client organization — presented at the quarterly earnings report. Also responsible for asset acquisition decisions and partnership negotiations with a major oil and gas firm.
+          </div>
+          <div class="exp-projects">
+            <div class="project-card">
+              <div class="project-icon">🌿</div>
+              <div class="project-name">Vegetation Reclamation Time-Series Pipeline</div>
+              <div class="project-desc">Automated time-series pipelines tracking vegetation reclamation across 400+ sites using RVI, NDVI, soil moisture, and precipitation indices. Integrated Maxar high-resolution captures from AWS S3 into PostgreSQL/PostGIS for 100% audit traceability.</div>
+              <span class="project-metric">400+ Sites · 100% Audit Traceability</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">🛰️</div>
+              <div class="project-name">Gas Pipeline Plume Detection — Vision Transformer</div>
+              <div class="project-desc">Developed Vision Transformer models for detecting gas pipeline plumes on multi-temporal satellite imagery. Achieved &gt;92% detection accuracy, significantly reducing manual inspection hours and operational risk for the client.</div>
+              <span class="project-metric">&gt;92% Detection Accuracy</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">⚡</div>
+              <div class="project-name">High-Throughput Drone & Satellite Data Pipelines</div>
+              <div class="project-desc">Engineered data pipelines for drone and satellite datasets exceeding 10 TB. Optimized processing time by 40% through parallelization and sensor-specific preprocessing strategies tailored to heterogeneous data sources.</div>
+              <span class="project-metric">&gt;10TB · 40% Faster Processing</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">🏗️</div>
+              <div class="project-name">Geo-Exploration In-House Application</div>
+              <div class="project-desc">End-to-end design and development of an internal geospatial platform for the exploration division. Reached ~70% of total client staff and featured asset acquisition analysis based on remotely sensed data quality metrics.</div>
+              <span class="project-metric">~70% Staff Adoption · Quarterly Earnings Feature</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Valectus -->
+    <div class="exp-item open reveal" onclick="toggleExp(this)">
+      <div class="exp-header">
+        <div>
+          <div class="exp-company-name">Valectus <span>Pvt. Ltd.</span></div>
+          <div class="exp-role">GIS Data Engineer</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px">
+          <div class="exp-meta">
+            <span class="exp-date">March 2024 – March 2025</span>
+            <span class="exp-location">Mumbai, IN</span>
+          </div>
+          <div class="exp-chevron">▼</div>
+        </div>
+      </div>
+      <div class="exp-body" style="max-height:4000px">
+        <div class="exp-body-inner">
+          <div class="exp-projects">
+            <div class="project-card">
+              <div class="project-icon">🗺️</div>
+              <div class="project-name">NYU Stern Project Mumbai — GIS Automation Pipeline</div>
+              <div class="project-desc">Engineered an automated GIS pipeline using Python (GDAL, GeoPandas) and PostGIS for NYU Stern's Project Mumbai. Eliminated 1,200+ manual hours per year, delivering $120K in annual savings for the client.</div>
+              <span class="project-metric">1,200+ hrs/yr saved · $120K Savings</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">🧠</div>
+              <div class="project-name">LULC Classification — Vision Transformer & CNN-UNet</div>
+              <div class="project-desc">Developed AI models including Vision Transformers and CNN-UNet achieving 97% accuracy for Land Use / Land Cover classification and change detection across complex Indian terrain using multi-spectral satellite imagery.</div>
+              <span class="project-metric">97% Accuracy</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">🛣️</div>
+              <div class="project-name">Legacy Satellite Enhancement & Remote Road Detection</div>
+              <div class="project-desc">Applied GANs (ERS-GAN) to enhance historical satellite imagery dating to 1997, enabling remote road detection on degraded legacy data. The improvement directly yielded a 22% profit boost for the project.</div>
+              <span class="project-metric">22% Profit Boost</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">🌊</div>
+              <div class="project-name">Real-Time Flood Risk Analysis System (GCP / GEE)</div>
+              <div class="project-desc">Designed a cloud-native geospatial system on GCP using Earth Engine, fusing DEM, SAR, and multi-temporal data with Monte Carlo simulations for real-time flood risk and vulnerability assessments with optimized math for instant outputs.</div>
+              <span class="project-metric">Real-Time Outputs · Monte Carlo Simulations</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">🌃</div>
+              <div class="project-name">COVID-19 Economic Impact via Nightlight Analysis</div>
+              <div class="project-desc">Processed terabytes of NASA VIIRS and MODIS data using Python and GDAL to quantify COVID-19's economic impact. Detected a –37.2% nightlight drop in Delhi as a satellite-based economic proxy indicator.</div>
+              <span class="project-metric">–37.2% Nightlight Drop in Delhi</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">🏙️</div>
+              <div class="project-name">SAR Urban Expansion Models — Sub-Saharan Africa</div>
+              <div class="project-desc">Built SAR-based urban expansion models across 1,000+ Sub-Saharan African towns using PyQGIS and C++. Achieved 18% faster PostGIS query performance through optimized spatial indexing and query restructuring.</div>
+              <span class="project-metric">1,000+ Towns · 18% Faster Queries</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nineleaps -->
+    <div class="exp-item open reveal" onclick="toggleExp(this)">
+      <div class="exp-header">
+        <div>
+          <div class="exp-company-name">Nineleaps <span>Technologies</span></div>
+          <div class="exp-role">Data Engineer</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px">
+          <div class="exp-meta">
+            <span class="exp-date">Nov 2023 – Feb 2024</span>
+            <span class="exp-location">Bangalore, IN</span>
+          </div>
+          <div class="exp-chevron">▼</div>
+        </div>
+      </div>
+      <div class="exp-body" style="max-height:4000px">
+        <div class="exp-body-inner">
+          <div class="exp-projects">
+            <div class="project-card">
+              <div class="project-icon">🚖</div>
+              <div class="project-name">Multi-Source ETL Pipelines — Top-3 Cab Service</div>
+              <div class="project-desc">Designed and implemented ETL pipelines across 10+ diverse data sources using SQL and Python for a top-3 cab service company operating across 50+ cities. Streamlined big data workflows improving processing speed by 35%.</div>
+              <span class="project-metric">35% Faster Processing · 50+ Cities</span>
+            </div>
+            <div class="project-card">
+              <div class="project-icon">📊</div>
+              <div class="project-name">Operational Intelligence Dashboards</div>
+              <div class="project-desc">Built interactive dashboards in Tableau and Power BI that surfaced data-driven decisions for operations leadership, directly improving operational efficiency and reducing reporting latency across the organization.</div>
+              <span class="project-metric">Tableau · Power BI · Real-Time Reporting</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IIT Indore TA -->
+    <div class="exp-item open reveal" onclick="toggleExp(this)">
+      <div class="exp-header">
+        <div>
+          <div class="exp-company-name">IIT Indore — <span>Teaching Assistant</span></div>
+          <div class="exp-role">Graduate Teaching & Lab Coordination</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px">
+          <div class="exp-meta">
+            <span class="exp-date">June 2022 – Dec 2022</span>
+            <span class="exp-location">Indore, IN</span>
+          </div>
+          <div class="exp-chevron">▼</div>
+        </div>
+      </div>
+      <div class="exp-body" style="max-height:4000px">
+        <div class="exp-body-inner">
+          <div class="exp-projects">
+            <div class="project-card">
+              <div class="project-icon">📡</div>
+              <div class="project-name">Kalman Filters & Random Signals — Graduate Lectures</div>
+              <div class="project-desc">Coordinated and led graduate-level lectures and laboratory sessions on Kalman Filters and Random Signals. Assisted with MATLAB simulations and developed course material for students in the Space Engineering program.</div>
+              <span class="project-metric">Graduate-Level · MATLAB Simulations</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="glitch-line"></div>
+
+<!-- RESEARCH PROJECTS -->
+<section id="projects">
+  <div class="section-header reveal">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Research Projects</h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="standalone-projects">
+    <div class="sp-card reveal">
+      <div class="sp-num">01</div>
+      <div class="sp-title">Change Detection with Sentinel-1 SAR & Sentinel-2 MSI Data</div>
+      <div class="sp-tech">Python · NumPy · Pandas · GDAL · GEE · SQL · PostgreSQL/PostGIS</div>
+      <div class="sp-desc">Developed dual-sensor change detection algorithms — Sentinel-1 SAR at 89% accuracy and Sentinel-2 MSI at 84% — for advanced forest health monitoring. Implemented PostgreSQL/PostGIS pipelines for spatial data management and species-level analysis. Computed user/producer accuracy and Cohen's kappa for statistical validation.</div>
+      <div class="sp-date">May 2023 · IIT Indore Earth Observation Lab</div>
+    </div>
+    <div class="sp-card reveal">
+      <div class="sp-num">02</div>
+      <div class="sp-title">Photogrammetric Species Identification with Sentinel Satellites</div>
+      <div class="sp-tech">scikit-learn · SVM · Random Forest · GDAL · Python · Pandas · NumPy · SQL</div>
+      <div class="sp-desc">Developed a photogrammetric species identification pipeline using Sentinel-1 C-band SAR and Sentinel-2 optical data to classify 17+ tree species in Indian forests. Leveraged Random Forest and SVM classifiers for refined band-specific data fusion and cross-sensor feature engineering.</div>
+      <div class="sp-date">November 2023</div>
+    </div>
+    <div class="sp-card reveal">
+      <div class="sp-num">03</div>
+      <div class="sp-title">Deforestation Detection — MTech Thesis</div>
+      <div class="sp-tech">Sentinel-1 · Sentinel-2 · Google Earth Engine · Python · Remote Sensing</div>
+      <div class="sp-desc">Investigated the combined potential of Sentinel-1 SAR and Sentinel-2 multi-spectral imagery for robust deforestation detection at IIT Indore's Earth Observation Lab. Explored multi-temporal fusion strategies, thresholding, and classification frameworks for detecting canopy loss at scale across Indian forest landscapes.</div>
+      <div class="sp-date">June 2023 · MTech Thesis · IIT Indore Earth Observation Lab</div>
+    </div>
+  </div>
+</section>
+
+<div class="glitch-line"></div>
+
+<!-- EDUCATION -->
+<section id="education">
+  <div class="section-header reveal">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Education</h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="edu-grid">
+    <div class="edu-card reveal">
+      <span class="edu-year">2021 – 2023</span>
+      <div class="edu-badge">MTech</div>
+      <div class="edu-institution">IIT Indore</div>
+      <div class="edu-degree">Master of Technology<br>Astronomy, Astrophysics &amp; Space Engineering</div>
+      <div class="edu-gpa">8.3 <span>/ 10.0 GPA</span></div>
+      <div class="edu-coursework">
+        <div class="edu-coursework-title">Thesis</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px;">Potential of Sentinel 1 and Sentinel 2 for deforestation detection — Earth Observation Lab</p>
+        <div class="edu-coursework-title">Coursework</div>
+        <div class="edu-courses">
+          <span class="edu-course">Remote Sensing</span><span class="edu-course">Earth Observation</span>
+          <span class="edu-course">Detectors & Sensors</span><span class="edu-course">Space Engineering Systems</span>
+          <span class="edu-course">Astrostatistics</span><span class="edu-course">Spacecraft Attitude Dynamics</span>
+          <span class="edu-course">Control & Pointing</span><span class="edu-course">Navigation Systems</span>
+        </div>
+      </div>
+    </div>
+    <div class="edu-card reveal">
+      <span class="edu-year">2017 – 2021</span>
+      <div class="edu-badge">BE</div>
+      <div class="edu-institution">University of Mumbai</div>
+      <div class="edu-degree">Bachelor of Engineering<br>Electronics Engineering</div>
+      <div class="edu-gpa">7.2 <span>/ 10.0 GPA</span></div>
+      <div class="edu-coursework">
+        <div class="edu-coursework-title">Honours & Recognition</div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px;">
+          <div style="background:rgba(64,144,240,.06);border:1px solid rgba(64,144,240,.2);padding:14px 18px;">
+            <div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:3px;">🥇 Gold Medalist</div>
+            <div style="font-size:11.5px;color:var(--muted);">International Informatics Olympiad</div>
+          </div>
+          <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);padding:14px 18px;">
+            <div style="font-size:12px;color:var(--text);font-weight:600;margin-bottom:3px;">6 months GIS Internship</div>
+            <div style="font-size:11.5px;color:var(--muted);">Specializing in Geographic Information Systems</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glitch-line"></div>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="contact-tag reveal">Let's connect</div>
+  <h2 class="contact-title reveal">Let's Build <span>Something</span></h2>
+  <p class="contact-sub reveal">Open to exciting geospatial, data engineering, and AI opportunities.</p>
+  <div class="contact-links reveal">
+    <a href="mailto:shubhanshub2007@gmail.com" class="contact-link">
+      <span class="icon">✉</span>shubhanshub2007@gmail.com
+    </a>
+    <a href="https://linkedin.com/in/shubhanshub" target="_blank" class="contact-link">
+      <span class="icon">in</span>linkedin.com/in/shubhanshub
+    </a>
+    <a href="https://github.com/shubhanshuwu" target="_blank" class="contact-link">
+      <span class="icon">⌥</span>github.com/shubhanshuwu
+    </a>
+    <a href="tel:+919834981942" class="contact-link">
+      <span class="icon">☏</span>+91 98349 81942
+    </a>
+  </div>
+</section>
+
+<footer>
+  <p>© 2025 Shubhanshu Bishwash — GIS Data Engineer</p>
+  <p>Mumbai, India · IIT Indore MTech Graduate</p>
+</footer>
+
+<script>
+// ── CURSOR: simple dot ──
+const cur = document.getElementById('cur');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX + 'px';
+  cur.style.top  = e.clientY + 'px';
+});
+document.querySelectorAll('a,button,.exp-item,.exp-card-mini,.skill-tag,.sp-card,.contact-link,.project-card').forEach(el => {
+  el.addEventListener('mouseenter', () => document.body.classList.add('hov'));
+  el.addEventListener('mouseleave', () => document.body.classList.remove('hov'));
+});
+
+// ── CANVAS ──
+const canvas = document.getElementById('bgc');
+const ctx    = canvas.getContext('2d');
+let W, H, nodes = [], comets = [];
+const mouse = { x: -999, y: -999 };
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); initNodes(); });
+document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+// ── NODES (stars + hexagons, interactive) ──
+function initNodes() {
+  nodes = [];
+  const count = Math.floor(W * H / 5200);
+  for (let i = 0; i < count; i++) {
+    nodes.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - .5) * .2,
+      vy: (Math.random() - .5) * .2,
+      r: Math.random() * 1.6 + .25,
+      pulse: Math.random() * Math.PI * 2,
+      type: Math.random() > .83 ? 'poly' : 'star'
+    });
+  }
+}
+initNodes();
+
+// ── COMETS ──
+function spawnComet() {
+  // always spawn from top or left edge, moving diagonal-ish
+  const fromTop = Math.random() > .4;
+  let x, y, vx, vy;
+  if (fromTop) {
+    x = Math.random() * W;
+    y = -10;
+    const spd = Math.random() * 6 + 5;
+    const ang = Math.PI / 2 + (Math.random() - .5) * .8;
+    vx = Math.cos(ang) * spd;
+    vy = Math.sin(ang) * spd;
+  } else {
+    x = -10;
+    y = Math.random() * H * .6;
+    const spd = Math.random() * 6 + 5;
+    const ang = (Math.random() - .5) * .6;
+    vx = Math.cos(ang) * spd;
+    vy = Math.sin(ang) * spd;
+  }
+  comets.push({
+    x, y, vx, vy,
+    len: Math.random() * 130 + 50,
+    alpha: Math.random() * .55 + .35,
+    life: 1,
+    decay: Math.random() * .007 + .004,
+    width: Math.random() * 1.3 + .3
+  });
+}
+
+// Kick off and keep spawning
+spawnComet(); spawnComet();
+setInterval(spawnComet, 2200);
+
+function drawPoly(cx, cy, sides, size, angle, alpha) {
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const a = angle + (i / sides) * Math.PI * 2;
+    i === 0
+      ? ctx.moveTo(cx + Math.cos(a) * size, cy + Math.sin(a) * size)
+      : ctx.lineTo(cx + Math.cos(a) * size, cy + Math.sin(a) * size);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = `rgba(64,144,240,${alpha})`;
+  ctx.lineWidth = .45;
+  ctx.stroke();
+}
+
+let frame = 0;
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  frame++;
+
+  // — draw comets —
+  comets = comets.filter(c => c.life > 0);
+  for (const c of comets) {
+    c.x += c.vx;
+    c.y += c.vy;
+    c.life -= c.decay;
+
+    const spd = Math.hypot(c.vx, c.vy);
+    const nx  = c.vx / spd, ny = c.vy / spd;
+    const tx  = c.x - nx * c.len,  ty = c.y - ny * c.len;
+    const a   = Math.max(0, c.life) * c.alpha;
+
+    // tail gradient
+    const grad = ctx.createLinearGradient(tx, ty, c.x, c.y);
+    grad.addColorStop(0,   `rgba(30,100,220,0)`);
+    grad.addColorStop(.55, `rgba(80,160,255,${a * .45})`);
+    grad.addColorStop(1,   `rgba(200,225,255,${a})`);
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(c.x, c.y);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = c.width;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // head glow
+    const r = c.width * 5;
+    const hg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, r);
+    hg.addColorStop(0, `rgba(210,232,255,${a * .85})`);
+    hg.addColorStop(1, `rgba(64,144,240,0)`);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = hg;
+    ctx.fill();
+  }
+
+  // — draw nodes —
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    n.x += n.vx; n.y += n.vy;
+    n.pulse += .013;
+    if (n.x < 0) n.x = W; if (n.x > W) n.x = 0;
+    if (n.y < 0) n.y = H; if (n.y > H) n.y = 0;
+
+    // mouse repulsion
+    const dm = Math.hypot(n.x - mouse.x, n.y - mouse.y);
+    const mf = dm < 130 ? (1 - dm / 130) : 0;
+    if (mf > 0) {
+      const ang = Math.atan2(n.y - mouse.y, n.x - mouse.x);
+      n.vx += Math.cos(ang) * mf * .036;
+      n.vy += Math.sin(ang) * mf * .036;
+    }
+    n.vx *= .985; n.vy *= .985;
+
+    const pa = .22 + Math.sin(n.pulse) * .16 + mf * .55;
+
+    if (n.type === 'poly') {
+      drawPoly(n.x, n.y, 6, n.r * 4.5 + mf * 9, frame * .0045 + i, pa * .6);
+    } else {
+      // glow for bigger stars
+      if (n.r > 1.1 || mf > .1) {
+        const gr = (n.r + mf * 2.5) * 3.5;
+        const sg = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, gr);
+        sg.addColorStop(0, `rgba(150,200,255,${pa * .55})`);
+        sg.addColorStop(1, `rgba(64,144,240,0)`);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, gr, 0, Math.PI * 2);
+        ctx.fillStyle = sg;
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r + mf * 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(170,215,255,${pa})`;
+      ctx.fill();
+    }
+
+    // connection lines between nearby nodes
+    for (let j = i + 1; j < nodes.length; j++) {
+      const nn = nodes[j];
+      const d  = Math.hypot(n.x - nn.x, n.y - nn.y);
+      if (d < 90) {
+        ctx.beginPath();
+        ctx.moveTo(n.x, n.y);
+        ctx.lineTo(nn.x, nn.y);
+        ctx.strokeStyle = `rgba(64,144,240,${(1 - d / 90) * .09})`;
+        ctx.lineWidth = .3;
+        ctx.stroke();
+      }
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+animate();
+
+// ── SCROLL REVEAL ──
+const obs = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 55);
+      obs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.07 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// ── ACCORDION: click to toggle, all start open ──
+function toggleExp(el) {
+  const body   = el.querySelector('.exp-body');
+  const isOpen = el.classList.contains('open');
+  if (isOpen) {
+    el.classList.remove('open');
+    body.style.maxHeight = '0';
+  } else {
+    el.classList.add('open');
+    body.style.maxHeight = body.scrollHeight + 3000 + 'px';
+  }
+}
+</script>
+</body>
+</html>
